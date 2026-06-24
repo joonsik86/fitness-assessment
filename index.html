@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICT 체력측정 평가 시스템 v2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+
+  :root {
+    --navy: #1a2744;
+    --teal: #1e8a7a;
+    --teal-light: #2db8a4;
+    --coral: #e05a4e;
+    --gold: #f0a500;
+    --bg: #f4f6fb;
+    --card: #ffffff;
+    --text: #1a2744;
+    --muted: #7a8599;
+    --border: #e2e8f0;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--navy);
+    color: white;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(26,39,68,0.18);
+  }
+  header .logo { display: flex; align-items: center; gap: 10px; }
+  header .logo-icon {
+    width: 34px; height: 34px;
+    background: var(--teal);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+  header p { font-size: 11px; color: #9db0cc; margin-top: 1px; }
+  .header-badge {
+    background: rgba(30,138,122,0.25);
+    border: 1px solid var(--teal);
+    color: var(--teal-light);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+
+  /* MAIN LAYOUT */
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+
+  /* EXERCISE SELECTOR */
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .exercise-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .ex-card {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .ex-card:hover { border-color: var(--teal); transform: translateY(-2px); }
+  .ex-card.active {
+    border-color: var(--teal);
+    background: linear-gradient(135deg, #e8f8f6, #f0fffe);
+    box-shadow: 0 4px 16px rgba(30,138,122,0.15);
+  }
+  .ex-card .icon { font-size: 28px; margin-bottom: 6px; }
+  .ex-card .name { font-size: 13px; font-weight: 700; color: var(--navy); }
+  .ex-card .muscle { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+  /* USER INFO */
+  .user-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr auto;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: end;
+  }
+  .field label { font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 4px; display: block; }
+  .field select, .field input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    background: white;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .field select:focus, .field input:focus { border-color: var(--teal); }
+  .btn-start {
+    background: var(--teal);
+    color: white;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .btn-start:hover { background: var(--teal-light); }
+  .btn-start:disabled { background: #b0bec5; cursor: not-allowed; }
+
+  /* MAIN PANEL */
+  .main-panel {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 16px;
+  }
+
+  /* VIDEO PANEL */
+  .video-panel {
+    background: var(--card);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(26,39,68,0.07);
+    position: relative;
+  }
+  .video-wrapper {
+    position: relative;
+    background: #0a1628;
+    aspect-ratio: 4/3;
+  }
+  #video { width: 100%; height: 100%; object-fit: cover; display: block; transform: scaleX(-1); }
+  #canvas {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    transform: scaleX(-1);
+  }
+
+  /* LIVE OVERLAY */
+  .overlay-count {
+    position: absolute;
+    top: 16px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10,22,40,0.85);
+    color: white;
+    border-radius: 50%;
+    width: 90px; height: 90px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-size: 38px; font-weight: 900;
+    line-height: 1;
+    border: 3px solid var(--teal);
+    backdrop-filter: blur(6px);
+  }
+  .overlay-count small { font-size: 11px; font-weight: 400; color: #9db0cc; }
+
+  .overlay-status {
+    position: absolute;
+    bottom: 16px; left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 13px; font-weight: 700;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+    transition: all 0.2s;
+  }
+  .status-up { background: rgba(34,197,94,0.85); color: white; }
+  .status-down { background: rgba(239,68,68,0.85); color: white; }
+  .status-ready { background: rgba(30,138,122,0.85); color: white; }
+  .status-form-error { background: rgba(240,165,0,0.9); color: #1a2744; }
+  .status-waiting { background: rgba(100,116,139,0.8); color: white; }
+
+  .overlay-angle {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: rgba(10,22,40,0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    backdrop-filter: blur(6px);
+  }
+  .angle-val { font-size: 22px; font-weight: 900; color: var(--teal-light); }
+
+  .form-indicator {
+    position: absolute;
+    top: 16px; left: 16px;
+  }
+  .form-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--danger);
+    box-shadow: 0 0 8px var(--danger);
+    display: inline-block;
+    margin-right: 5px;
+    vertical-align: middle;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .form-dot.good { background: var(--success); box-shadow: 0 0 8px var(--success); }
+  .form-label {
+    font-size: 11px; color: white; font-weight: 600;
+    background: rgba(10,22,40,0.7);
+    padding: 4px 8px;
+    border-radius: 8px;
+    backdrop-filter: blur(4px);
+  }
+
+  /* VIDEO CONTROLS */
+  .video-controls {
+    padding: 14px 16px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    border-top: 1px solid var(--border);
+  }
+  .btn-ctrl {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .btn-activate { background: var(--navy); color: white; }
+  .btn-activate:hover { background: #2a3a5e; }
+  .btn-stop { background: var(--coral); color: white; }
+  .btn-stop:hover { background: #c94a40; }
+  .btn-reset { background: var(--bg); color: var(--muted); border: 1.5px solid var(--border); }
+  .btn-reset:hover { background: white; color: var(--navy); }
+
+  /* RIGHT PANEL */
+  .right-panel { display: flex; flex-direction: column; gap: 14px; }
+
+  .info-card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(26,39,68,0.06);
+  }
+  .info-card h3 {
+    font-size: 12px; font-weight: 700;
+    color: var(--muted); letter-spacing: 0.8px;
+    text-transform: uppercase; margin-bottom: 12px;
+  }
+
+  /* POSE GUIDE */
+  .pose-guide { font-size: 12px; }
+  .pose-phase {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .pose-phase:last-child { border-bottom: none; }
+  .phase-icon {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0;
+  }
+  .phase-down { background: #fef3c7; }
+  .phase-up { background: #dcfce7; }
+  .phase-check { background: #fce7f3; }
+  .phase-text strong { font-size: 12px; color: var(--navy); display: block; margin-bottom: 2px; }
+  .phase-text span { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+  /* ANGLE THRESHOLD */
+  .threshold-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .threshold-row:last-child { border-bottom: none; }
+  .threshold-label { color: var(--muted); }
+  .threshold-val { font-weight: 700; color: var(--navy); }
+  .threshold-range {
+    background: var(--bg);
+    color: var(--teal);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* RESULT / SCORE */
+  .result-block {
+    background: linear-gradient(135deg, var(--navy), #2a3a5e);
+    border-radius: 14px;
+    padding: 20px;
+    color: white;
+    text-align: center;
+  }
+  .result-block .ex-name { font-size: 12px; color: #9db0cc; margin-bottom: 8px; }
+  .result-number { font-size: 52px; font-weight: 900; line-height: 1; }
+  .result-unit { font-size: 14px; color: #9db0cc; margin-top: 4px; }
+  .result-grade {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 6px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .grade-S { background: #fef3c7; color: #92400e; }
+  .grade-A { background: #dcfce7; color: #14532d; }
+  .grade-B { background: #dbeafe; color: #1e3a8a; }
+  .grade-C { background: #fce7f3; color: #831843; }
+  .grade-D { background: #fee2e2; color: #7f1d1d; }
+
+  /* NORM TABLE */
+  .norm-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .norm-table th {
+    background: var(--bg);
+    padding: 7px 8px;
+    text-align: left;
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .norm-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .norm-table tr:last-child td { border-bottom: none; }
+  .norm-table tr.highlight td { background: #e8f8f6; font-weight: 700; color: var(--teal); }
+  .grade-badge {
+    display: inline-block;
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    text-align: center; line-height: 22px;
+    font-size: 11px; font-weight: 700;
+  }
+  .gb-S { background: #fef3c7; color: #92400e; }
+  .gb-A { background: #dcfce7; color: #14532d; }
+  .gb-B { background: #dbeafe; color: #1e3a8a; }
+  .gb-C { background: #fce7f3; color: #831843; }
+  .gb-D { background: #fee2e2; color: #7f1d1d; }
+
+  /* HISTORY */
+  .history-list { max-height: 160px; overflow-y: auto; }
+  .history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-ex { color: var(--muted); }
+  .history-score { font-weight: 700; color: var(--navy); }
+
+  /* ERROR MSG */
+  .error-box {
+    background: #fef3c7;
+    border: 1.5px solid var(--gold);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 11px;
+    color: #78350f;
+    margin-top: 8px;
+    display: none;
+  }
+  .error-box.show { display: block; }
+
+  /* NO CAM */
+  .no-cam {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 260px;
+    gap: 12px;
+    color: #9db0cc;
+  }
+  .no-cam .icon { font-size: 48px; }
+  .no-cam p { font-size: 13px; text-align: center; line-height: 1.6; }
+
+  /* TABS */
+  .tab-row { display: flex; gap: 4px; margin-bottom: 10px; }
+  .tab-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: white;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .tab-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+
+  /* FORM ERROR LOG */
+  .form-errors { max-height: 80px; overflow-y: auto; }
+  .form-error-item {
+    font-size: 11px;
+    color: var(--coral);
+    padding: 3px 0;
+    border-bottom: 1px solid #fee2e2;
+  }
+  .form-error-item:last-child { border-bottom: none; }
+
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+  @media (max-width: 900px) {
+    .main-panel { grid-template-columns: 1fr; }
+    .exercise-grid { grid-template-columns: repeat(3, 1fr); }
+    .user-row { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🏋️</div>
+    <div>
+      <h1>ICT 체력측정 평가 시스템</h1>
+      <p>백석대학교 특수체육교육과 · AI 자세인식 기반</p>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button id="btnRecHdr" onclick="toggleRecord()" style="background:rgba(224,90,78,.25);border:1px solid #e05a4e;color:#ffb3ae;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">⏺ 화면 녹화</button>
+    <button onclick="openGuideModal()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📋 자세 기준</button>
+    <div class="header-badge">MediaPipe Pose</div>
+  </div>
+</header>
+
+<!-- 자세 기준 모달 -->
+<div id="guideModal" style="display:none;position:fixed;inset:0;background:rgba(10,22,40,.6);z-index:999;align-items:center;justify-content:center;backdrop-filter:blur(4px)" onclick="if(event.target===this)closeGuideModal()">
+  <div style="background:#fff;border-radius:16px;padding:24px;max-width:520px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(10,22,40,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 id="modalTitle" style="font-size:16px;font-weight:700;color:#1a2744">자세 인정 기준</h2>
+      <button onclick="closeGuideModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#7a8599">✕</button>
+    </div>
+    <div id="modalBody"></div>
+    <div style="background:#f0fffe;border:1.5px solid #1e8a7a;border-radius:10px;padding:10px 12px;margin-top:14px;font-size:11px;color:#0f5a50;line-height:1.6">
+      📷 <strong>카메라 위치 안내</strong><br>
+      측면 45°: 스쿼트 깊이·상체 전경 판별 최적 | 정면: 무릎 Valgus 판별 최적<br>
+      단일 카메라로 모든 오류를 완벽히 잡는 것은 불가능합니다 — 이 한계가 <strong>타당도 논의</strong>의 출발점입니다.
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- EXERCISE SELECT -->
+  <div class="section-title">운동 선택</div>
+  <div class="exercise-grid" id="exerciseGrid">
+    <div class="ex-card active" data-ex="squat">
+      <div class="icon">🦵</div>
+      <div class="name">스쿼트</div>
+      <div class="muscle">하지 · 둔근</div>
+    </div>
+    <div class="ex-card" data-ex="pushup">
+      <div class="icon">💪</div>
+      <div class="name">팔굽혀펴기</div>
+      <div class="muscle">상지 · 흉근</div>
+    </div>
+    <div class="ex-card" data-ex="pullup">
+      <div class="icon">🔝</div>
+      <div class="name">턱걸이</div>
+      <div class="muscle">광배 · 이두</div>
+    </div>
+    <div class="ex-card" data-ex="situp">
+      <div class="icon">🔄</div>
+      <div class="name">윗몸일으키기</div>
+      <div class="muscle">복근 · 장요근</div>
+    </div>
+    <div class="ex-card" data-ex="bench">
+      <div class="icon">🏋️</div>
+      <div class="name">벤치프레스</div>
+      <div class="muscle">흉근 · 삼두</div>
+    </div>
+  </div>
+
+  <!-- USER INFO -->
+  <div class="user-row">
+    <div class="field">
+      <label>성별</label>
+      <select id="gender">
+        <option value="male">남성</option>
+        <option value="female">여성</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>연령대</label>
+      <select id="ageGroup">
+        <option value="20">20대</option>
+        <option value="30">30대</option>
+        <option value="40">40대</option>
+        <option value="50">50대</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>시간 제한 (초)</label>
+      <input type="number" id="timeLimit" value="60" min="10" max="300">
+    </div>
+    <div class="field">
+      <label>측정자 이름</label>
+      <input type="text" id="userName" placeholder="이름 입력">
+    </div>
+    <button class="btn-start" id="btnActivate" onclick="activateCamera()">📷 카메라 활성화</button>
+  </div>
+
+  <!-- MAIN PANEL -->
+  <div class="main-panel">
+
+    <!-- VIDEO -->
+    <div class="video-panel">
+      <div class="video-wrapper" id="videoWrapper">
+        <div class="no-cam" id="noCam">
+          <div class="icon">📷</div>
+          <p>카메라를 활성화하면<br>AI 자세 인식이 시작됩니다</p>
+          <p style="font-size:11px;color:#64748b">MediaPipe Pose 33개 관절 실시간 분석</p>
+        </div>
+        <video id="video" autoplay muted playsinline style="display:none"></video>
+        <canvas id="canvas" style="display:none"></canvas>
+
+        <!-- Overlays (hidden until cam starts) -->
+        <div class="overlay-count" id="overlayCount" style="display:none">
+          <span id="countNum">0</span>
+          <small>회</small>
+        </div>
+
+        <div class="overlay-angle" id="overlayAngle" style="display:none">
+          <div style="font-size:10px;color:#9db0cc;margin-bottom:2px">관절 각도</div>
+          <div class="angle-val" id="angleVal">--°</div>
+        </div>
+
+        <div class="form-indicator" id="formIndicator" style="display:none">
+          <span class="form-label"><span class="form-dot" id="formDot"></span><span id="formText">자세 분석 중</span></span>
+        </div>
+
+        <div class="overlay-status status-waiting" id="overlayStatus" style="display:none">
+          카메라 대기 중
+        </div>
+      </div>
+
+      <div class="video-controls">
+        <button class="btn-ctrl btn-activate" id="btnMeasure" onclick="startMeasurement()" disabled>▶ 측정 시작</button>
+        <button class="btn-ctrl btn-stop" id="btnStop" onclick="stopMeasurement()" disabled>■ 측정 중지</button>
+        <button class="btn-ctrl btn-reset" onclick="resetCount()">↺ 초기화</button>
+        <button id="btnRec" onclick="toggleRecord()" style="flex:1;padding:10px;border-radius:8px;border:1.5px solid #e05a4e;background:#1a1a2e;color:#ffb3ae;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">⏺ 녹화</button>
+        <button onclick="openGuideModal()" style="flex:1;padding:10px;border-radius:8px;border:1.5px solid #1e8a7a;background:#f4f6fb;color:#1e8a7a;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📋 자세기준</button>
+      </div>
+      <!-- REC indicator overlay -->
+      <div id="ovRec" style="display:none;position:absolute;top:14px;left:50%;transform:translateX(60px);background:rgba(224,90,78,.85);color:#fff;padding:4px 10px;border-radius:10px;font-size:11px;font-weight:700;animation:pulse .8s infinite;pointer-events:none">● REC</div>
+
+      <div class="error-box" id="errorBox"></div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right-panel">
+
+      <!-- RESULT -->
+      <div class="result-block" id="resultBlock">
+        <div class="ex-name" id="resExName">스쿼트</div>
+        <div class="result-number" id="resCount">0</div>
+        <div class="result-unit">회 (자세 정확)</div>
+        <div class="result-grade grade-B" id="resGrade">측정 전</div>
+      </div>
+
+      <!-- POSE GUIDE -->
+      <div class="info-card">
+        <h3>자세 가이드</h3>
+        <div class="pose-guide" id="poseGuide">
+          <!-- dynamic -->
+        </div>
+      </div>
+
+      <!-- TABS: 기준표 / 형식오류 -->
+      <div class="info-card">
+        <div class="tab-row">
+          <button class="tab-btn active" onclick="switchTab('norm')">📊 기준표</button>
+          <button class="tab-btn" onclick="switchTab('errors')">⚠️ 자세 오류</button>
+        </div>
+        <div id="tabNorm">
+          <table class="norm-table" id="normTable">
+            <!-- dynamic -->
+          </table>
+        </div>
+        <div id="tabErrors" style="display:none">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">자세 미인정 사유 (최근 10개)</div>
+          <div class="form-errors" id="formErrorLog">
+            <div style="font-size:12px;color:var(--muted);text-align:center;padding:16px">측정 시 오류 기록이 표시됩니다</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="info-card">
+        <h3>측정 기록</h3>
+        <div class="history-list" id="historyList">
+          <div style="font-size:12px;color:var(--muted);text-align:center;padding:12px">기록 없음</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+
+<script>
+// ============================
+// DATA: 운동 정의 & 기준표
+// ============================
+const EXERCISES = {
+  squat: {
+    name: '스쿼트',
+    joint: '무릎 굴곡각',
+    downAngle: 100,   // 이 각도 이하면 DOWN
+    upAngle: 160,     // 이 각도 이상면 UP (완전 신전)
+    formChecks: {
+      kneeAlignment: true,   // 무릎이 발끝 안쪽으로 들어오면 안됨
+      hipDepth: true,        // 허벅지가 지면 평행 이하
+    },
+    guide: [
+      { icon: '🔽', cls: 'phase-down', title: 'DOWN 조건', desc: '무릎 각도 < 100° (허벅지 수평 이하)' },
+      { icon: '🔼', cls: 'phase-up',   title: 'UP 조건',   desc: '무릎 각도 > 160° (완전 신전)' },
+      { icon: '✅', cls: 'phase-check', title: '자세 체크', desc: '무릎이 발끝 방향 유지, 상체 과도 전경 금지' },
+    ],
+    norm: {
+      male: {
+        '20': [{g:'S',label:'매우우수',min:40},{g:'A',label:'우수',min:35},{g:'B',label:'보통',min:28},{g:'C',label:'미흡',min:20},{g:'D',label:'매우미흡',min:0}],
+        '30': [{g:'S',label:'매우우수',min:36},{g:'A',label:'우수',min:30},{g:'B',label:'보통',min:24},{g:'C',label:'미흡',min:17},{g:'D',label:'매우미흡',min:0}],
+        '40': [{g:'S',label:'매우우수',min:30},{g:'A',label:'우수',min:25},{g:'B',label:'보통',min:20},{g:'C',label:'미흡',min:14},{g:'D',label:'매우미흡',min:0}],
+        '50': [{g:'S',label:'매우우수',min:24},{g:'A',label:'우수',min:20},{g:'B',label:'보통',min:16},{g:'C',label:'미흡',min:11},{g:'D',label:'매우미흡',min:0}],
+      },
+      female: {
+        '20': [{g:'S',label:'매우우수',min:32},{g:'A',label:'우수',min:27},{g:'B',label:'보통',min:22},{g:'C',label:'미흡',min:16},{g:'D',label:'매우미흡',min:0}],
+        '30': [{g:'S',label:'매우우수',min:28},{g:'A',label:'우수',min:23},{g:'B',label:'보통',min:18},{g:'C',label:'미흡',min:13},{g:'D',label:'매우미흡',min:0}],
+        '40': [{g:'S',label:'매우우수',min:24},{g:'A',label:'우수',min:19},{g:'B',label:'보통',min:15},{g:'C',label:'미흡',min:11},{g:'D',label:'매우미흡',min:0}],
+        '50': [{g:'S',label:'매우우수',min:18},{g:'A',label:'우수',min:14},{g:'B',label:'보통',min:11},{g:'C',label:'미흡',min:8},{g:'D',label:'매우미흡',min:0}],
+      }
+    }
+  },
+  pushup: {
+    name: '팔굽혀펴기',
+    joint: '팔꿈치 굴곡각',
+    downAngle: 90,
+    upAngle: 160,
+    guide: [
+      { icon: '🔽', cls: 'phase-down', title: 'DOWN 조건', desc: '팔꿈치 각도 < 90° (가슴이 주먹 1개 거리)' },
+      { icon: '🔼', cls: 'phase-up',   title: 'UP 조건',   desc: '팔꿈치 각도 > 160° (완전 신전)' },
+      { icon: '✅', cls: 'phase-check', title: '자세 체크', desc: '몸통 일직선 유지, 엉덩이 들림/처짐 금지' },
+    ],
+    norm: {
+      male: {
+        '20': [{g:'S',min:50},{g:'A',min:40},{g:'B',min:30},{g:'C',min:20},{g:'D',min:0}],
+        '30': [{g:'S',min:45},{g:'A',min:35},{g:'B',min:25},{g:'C',min:16},{g:'D',min:0}],
+        '40': [{g:'S',min:38},{g:'A',min:29},{g:'B',min:21},{g:'C',min:13},{g:'D',min:0}],
+        '50': [{g:'S',min:30},{g:'A',min:22},{g:'B',min:15},{g:'C',min:9},{g:'D',min:0}],
+      },
+      female: {
+        '20': [{g:'S',min:30},{g:'A',min:22},{g:'B',min:15},{g:'C',min:10},{g:'D',min:0}],
+        '30': [{g:'S',min:25},{g:'A',min:18},{g:'B',min:12},{g:'C',min:8},{g:'D',min:0}],
+        '40': [{g:'S',min:20},{g:'A',min:14},{g:'B',min:9},{g:'C',min:6},{g:'D',min:0}],
+        '50': [{g:'S',min:15},{g:'A',min:10},{g:'B',min:7},{g:'C',min:4},{g:'D',min:0}],
+      }
+    }
+  },
+  pullup: {
+    name: '턱걸이',
+    joint: '팔꿈치 굴곡각',
+    downAngle: 170,
+    upAngle: 60,
+    invertLogic: true,  // 내려가면 각도 커짐
+    guide: [
+      { icon: '🔽', cls: 'phase-down', title: 'DOWN 조건', desc: '팔꿈치 완전 신전 > 160° (완전 하강)' },
+      { icon: '🔼', cls: 'phase-up',   title: 'UP 조건',   desc: '팔꿈치 굴곡 < 60° (턱이 바 위로)' },
+      { icon: '✅', cls: 'phase-check', title: '자세 체크', desc: '반동 사용 금지, 완전 신전 후 재시작' },
+    ],
+    norm: {
+      male: {
+        '20': [{g:'S',min:18},{g:'A',min:13},{g:'B',min:8},{g:'C',min:4},{g:'D',min:0}],
+        '30': [{g:'S',min:15},{g:'A',min:10},{g:'B',min:6},{g:'C',min:3},{g:'D',min:0}],
+        '40': [{g:'S',min:12},{g:'A',min:8},{g:'B',min:5},{g:'C',min:2},{g:'D',min:0}],
+        '50': [{g:'S',min:8},{g:'A',min:5},{g:'B',min:3},{g:'C',min:1},{g:'D',min:0}],
+      },
+      female: {
+        '20': [{g:'S',min:8},{g:'A',min:5},{g:'B',min:3},{g:'C',min:1},{g:'D',min:0}],
+        '30': [{g:'S',min:6},{g:'A',min:4},{g:'B',min:2},{g:'C',min:1},{g:'D',min:0}],
+        '40': [{g:'S',min:4},{g:'A',min:2},{g:'B',min:1},{g:'C',min:0},{g:'D',min:0}],
+        '50': [{g:'S',min:3},{g:'A',min:1},{g:'B',min:0},{g:'C',min:0},{g:'D',min:0}],
+      }
+    }
+  },
+  situp: {
+    name: '윗몸일으키기',
+    joint: '고관절 굴곡각',
+    downAngle: 150,
+    upAngle: 80,
+    invertLogic: true,
+    guide: [
+      { icon: '🔽', cls: 'phase-down', title: 'DOWN 조건', desc: '어깨가 바닥에 닿음 (각도 > 140°)' },
+      { icon: '🔼', cls: 'phase-up',   title: 'UP 조건',   desc: '상체가 90° 이상 일어남 (각도 < 80°)' },
+      { icon: '✅', cls: 'phase-check', title: '자세 체크', desc: '무릎 90° 고정, 손 머리 뒤 (반동 금지)' },
+    ],
+    norm: {
+      male: {
+        '20': [{g:'S',min:50},{g:'A',min:42},{g:'B',min:34},{g:'C',min:24},{g:'D',min:0}],
+        '30': [{g:'S',min:42},{g:'A',min:35},{g:'B',min:28},{g:'C',min:19},{g:'D',min:0}],
+        '40': [{g:'S',min:35},{g:'A',min:28},{g:'B',min:21},{g:'C',min:14},{g:'D',min:0}],
+        '50': [{g:'S',min:27},{g:'A',min:21},{g:'B',min:15},{g:'C',min:10},{g:'D',min:0}],
+      },
+      female: {
+        '20': [{g:'S',min:40},{g:'A',min:33},{g:'B',min:26},{g:'C',min:18},{g:'D',min:0}],
+        '30': [{g:'S',min:34},{g:'A',min:27},{g:'B',min:21},{g:'C',min:14},{g:'D',min:0}],
+        '40': [{g:'S',min:28},{g:'A',min:22},{g:'B',min:16},{g:'C',min:10},{g:'D',min:0}],
+        '50': [{g:'S',min:22},{g:'A',min:16},{g:'B',min:11},{g:'C',min:7},{g:'D',min:0}],
+      }
+    }
+  },
+  bench: {
+    name: '벤치프레스',
+    joint: '팔꿈치 굴곡각',
+    downAngle: 90,
+    upAngle: 160,
+    guide: [
+      { icon: '🔽', cls: 'phase-down', title: 'DOWN 조건', desc: '팔꿈치 < 90° (바가 가슴에 닿음)' },
+      { icon: '🔼', cls: 'phase-up',   title: 'UP 조건',   desc: '팔꿈치 > 160° (완전 신전, 잠금 금지)' },
+      { icon: '✅', cls: 'phase-check', title: '자세 체크', desc: '등 아치 자연스럽게, 발 바닥 고정' },
+    ],
+    norm: {
+      male: {
+        '20': [{g:'S',min:20},{g:'A',min:15},{g:'B',min:10},{g:'C',min:6},{g:'D',min:0}],
+        '30': [{g:'S',min:18},{g:'A',min:13},{g:'B',min:8},{g:'C',min:5},{g:'D',min:0}],
+        '40': [{g:'S',min:14},{g:'A',min:10},{g:'B',min:7},{g:'C',min:4},{g:'D',min:0}],
+        '50': [{g:'S',min:10},{g:'A',min:7},{g:'B',min:5},{g:'C',min:3},{g:'D',min:0}],
+      },
+      female: {
+        '20': [{g:'S',min:12},{g:'A',min:9},{g:'B',min:6},{g:'C',min:3},{g:'D',min:0}],
+        '30': [{g:'S',min:10},{g:'A',min:7},{g:'B',min:4},{g:'C',min:2},{g:'D',min:0}],
+        '40': [{g:'S',min:8},{g:'A',min:5},{g:'B',min:3},{g:'C',min:1},{g:'D',min:0}],
+        '50': [{g:'S',min:5},{g:'A',min:3},{g:'B',min:2},{g:'C',min:0},{g:'D',min:0}],
+      }
+    }
+  }
+};
+
+// ============================
+// STATE
+// ============================
+let currentEx = 'squat';
+let count = 0;
+let phase = 'up';  // 'up' | 'down'
+let isRunning = false;
+let cameraReady = false;
+let currentAngle = 0;
+let formGood = false;
+let formErrors = [];
+let history = [];
+let poseModel = null;
+let camera = null;
+let timerInterval = null;
+let timeLeft = 60;
+let consecutiveFormFail = 0;
+
+// ============================
+// UI INIT
+// ============================
+document.getElementById('exerciseGrid').addEventListener('click', e => {
+  const card = e.target.closest('.ex-card');
+  if (!card) return;
+  document.querySelectorAll('.ex-card').forEach(c => c.classList.remove('active'));
+  card.classList.add('active');
+  currentEx = card.dataset.ex;
+  resetCount();
+  renderPoseGuide();
+  renderNormTable();
+  updateResBlock();
+});
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tabNorm').style.display = tab === 'norm' ? '' : 'none';
+  document.getElementById('tabErrors').style.display = tab === 'errors' ? '' : 'none';
+}
+
+function renderPoseGuide() {
+  const ex = EXERCISES[currentEx];
+  const html = (ex.guide || []).map(p => `
+    <div class="pose-phase">
+      <div class="phase-icon ${p.cls}">${p.icon}</div>
+      <div class="phase-text">
+        <strong>${p.title}</strong>
+        <span>${p.desc}</span>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('poseGuide').innerHTML = html;
+}
+
+function renderNormTable() {
+  const ex = EXERCISES[currentEx];
+  const gender = document.getElementById('gender').value;
+  const age = document.getElementById('ageGroup').value;
+  const norms = ex.norm[gender][age];
+  const labels = {S:'매우우수',A:'우수',B:'보통',C:'미흡',D:'매우미흡'};
+  let html = `<thead><tr>
+    <th>등급</th><th>수준</th><th>기준 (회/분)</th><th>상태</th>
+  </tr></thead><tbody>`;
+  for (let i = 0; i < norms.length; i++) {
+    const n = norms[i];
+    const next = norms[i+1];
+    const rangeText = next ? `${n.min}회 이상` : `${n.min}회 미만`;
+    const isHighlight = getGrade() === n.g;
+    html += `<tr class="${isHighlight ? 'highlight' : ''}">
+      <td><span class="grade-badge gb-${n.g}">${n.g}</span></td>
+      <td>${n.label || labels[n.g]}</td>
+      <td>${rangeText}</td>
+      <td>${isHighlight ? '← 현재' : ''}</td>
+    </tr>`;
+  }
+  html += '</tbody>';
+  document.getElementById('normTable').innerHTML = html;
+}
+
+function getGrade() {
+  const ex = EXERCISES[currentEx];
+  const gender = document.getElementById('gender').value;
+  const age = document.getElementById('ageGroup').value;
+  const norms = ex.norm[gender][age];
+  for (const n of norms) {
+    if (count >= n.min) return n.g;
+  }
+  return 'D';
+}
+
+function updateResBlock() {
+  document.getElementById('resExName').textContent = EXERCISES[currentEx].name;
+  document.getElementById('resCount').textContent = count;
+  const grade = getGrade();
+  const labels = {S:'S등급 — 매우우수',A:'A등급 — 우수',B:'B등급 — 보통',C:'C등급 — 미흡',D:'D등급 — 매우미흡'};
+  const el = document.getElementById('resGrade');
+  el.textContent = count === 0 ? '측정 전' : labels[grade];
+  el.className = `result-grade grade-${grade}`;
+  renderNormTable();
+}
+
+// ============================
+// CAMERA & POSE
+// ============================
+async function activateCamera() {
+  document.getElementById('btnActivate').disabled = true;
+  document.getElementById('btnActivate').textContent = '카메라 로딩 중...';
+
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
+    video.srcObject = stream;
+    video.style.display = 'block';
+    canvas.style.display = 'block';
+    document.getElementById('noCam').style.display = 'none';
+
+    // Show overlays
+    ['overlayCount','overlayAngle','formIndicator','overlayStatus'].forEach(id => {
+      document.getElementById(id).style.display = '';
+    });
+
+    // Init MediaPipe Pose
+    poseModel = new Pose({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+    });
+    poseModel.setOptions({
+      modelComplexity: 1,
+      smoothLandmarks: true,
+      enableSegmentation: false,
+      minDetectionConfidence: 0.6,
+      minTrackingConfidence: 0.6
+    });
+    poseModel.onResults(onPoseResults);
+
+    camera = new Camera(video, {
+      onFrame: async () => { await poseModel.send({ image: video }); },
+      width: 640, height: 480
+    });
+    await camera.start();
+
+    cameraReady = true;
+    document.getElementById('btnMeasure').disabled = false;
+    document.getElementById('btnActivate').textContent = '✅ 카메라 활성';
+    setStatus('카메라 준비 완료 — 측정 시작을 누르세요', 'ready');
+  } catch(e) {
+    document.getElementById('btnActivate').disabled = false;
+    document.getElementById('btnActivate').textContent = '📷 카메라 활성화';
+    showError('카메라 접근 오류: ' + e.message);
+  }
+}
+
+function onPoseResults(results) {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (!results.poseLandmarks) {
+    setStatus('사람을 찾을 수 없습니다', 'waiting');
+    return;
+  }
+
+  // Draw skeleton
+  drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, { color: 'rgba(30,138,122,0.5)', lineWidth: 2 });
+  drawLandmarks(ctx, results.poseLandmarks, { color: '#2db8a4', lineWidth: 1, radius: 4 });
+
+  if (!isRunning) return;
+
+  const lm = results.poseLandmarks;
+  const ex = EXERCISES[currentEx];
+
+  // Calculate angle based on exercise
+  let angle = 0;
+  let formOk = true;
+  let formMsg = '';
+
+  if (currentEx === 'squat') {
+    // Left knee: hip(23) - knee(25) - ankle(27)
+    angle = calcAngle(lm[23], lm[25], lm[27]);
+    // Form check: knee x should not go inside foot x
+    const kneeIn = lm[25].x < lm[27].x - 0.05;
+    if (kneeIn) { formOk = false; formMsg = '무릎이 안쪽으로 무너짐 (Knee Valgus)'; }
+  } else if (currentEx === 'pushup') {
+    // Left elbow: shoulder(11) - elbow(13) - wrist(15)
+    angle = calcAngle(lm[11], lm[13], lm[15]);
+    // Body alignment: shoulder, hip, ankle should be roughly collinear
+    const bodyAngle = calcAngle(lm[11], lm[23], lm[27]);
+    if (bodyAngle < 160) { formOk = false; formMsg = '엉덩이가 처지거나 들려있음 (몸통 비정렬)'; }
+  } else if (currentEx === 'pullup') {
+    angle = calcAngle(lm[11], lm[13], lm[15]);
+  } else if (currentEx === 'situp') {
+    // Hip: shoulder(11) - hip(23) - knee(25)
+    angle = calcAngle(lm[11], lm[23], lm[25]);
+  } else if (currentEx === 'bench') {
+    angle = calcAngle(lm[11], lm[13], lm[15]);
+  }
+
+  currentAngle = Math.round(angle);
+  document.getElementById('angleVal').textContent = currentAngle + '°';
+
+  // Form indicator
+  const formDot = document.getElementById('formDot');
+  const formText = document.getElementById('formText');
+  if (formOk) {
+    formDot.className = 'form-dot good';
+    formText.textContent = '자세 양호';
+  } else {
+    formDot.className = 'form-dot';
+    formText.textContent = '자세 오류';
+    consecutiveFormFail++;
+    if (consecutiveFormFail > 10) {
+      logFormError(formMsg);
+      consecutiveFormFail = 0;
+    }
+  }
+  formGood = formOk;
+
+  // REP COUNTING LOGIC
+  countRep(angle, ex, formOk);
+
+  // Highlight key joints
+  highlightJoint(ctx, lm, canvas);
+}
+
+function countRep(angle, ex, formOk) {
+  const inv = ex.invertLogic;
+
+  if (!inv) {
+    // Normal: up = extended, down = flexed
+    if (phase === 'up' && angle < ex.downAngle) {
+      phase = 'down';
+      setStatus('⬇ DOWN — 올라오세요', 'down');
+    } else if (phase === 'down' && angle > ex.upAngle) {
+      if (formOk) {
+        count++;
+        document.getElementById('countNum').textContent = count;
+        speak(String(count));
+        updateResBlock();
+        setStatus(`⬆ UP — ${count}회 완료!`, 'up');
+      } else {
+        setStatus('자세 오류 — 미인정', 'form-error');
+      }
+      phase = 'up';
+    }
+  } else {
+    // Inverted: pullup/situp — up = flexed (small angle), down = extended (large angle)
+    if (phase === 'up' && angle > ex.downAngle) {
+      phase = 'down';
+      setStatus('⬇ DOWN — 올라오세요', 'down');
+    } else if (phase === 'down' && angle < ex.upAngle) {
+      if (formOk) {
+        count++;
+        document.getElementById('countNum').textContent = count;
+        speak(String(count));
+        updateResBlock();
+        setStatus(`⬆ UP — ${count}회 완료!`, 'up');
+      } else {
+        setStatus('자세 오류 — 미인정', 'form-error');
+      }
+      phase = 'up';
+    }
+  }
+}
+
+function calcAngle(A, B, C) {
+  const radians = Math.atan2(C.y - B.y, C.x - B.x) - Math.atan2(A.y - B.y, A.x - B.x);
+  let angle = Math.abs(radians * 180 / Math.PI);
+  if (angle > 180) angle = 360 - angle;
+  return angle;
+}
+
+function highlightJoint(ctx, lm, canvas) {
+  // Highlight relevant joint
+  let jointIdx = 25; // default knee
+  if (currentEx === 'pushup' || currentEx === 'pullup' || currentEx === 'bench') jointIdx = 13;
+  if (currentEx === 'situp') jointIdx = 23;
+
+  const lmk = lm[jointIdx];
+  const x = lmk.x * canvas.width;
+  const y = lmk.y * canvas.height;
+  ctx.beginPath();
+  ctx.arc(x, y, 14, 0, 2 * Math.PI);
+  ctx.strokeStyle = formGood ? '#22c55e' : '#ef4444';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.fillStyle = formGood ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)';
+  ctx.fill();
+
+  // Draw angle arc
+  ctx.font = 'bold 14px Noto Sans KR';
+  ctx.fillStyle = 'white';
+  ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+  ctx.lineWidth = 3;
+  ctx.strokeText(`${currentAngle}°`, x + 16, y - 4);
+  ctx.fillText(`${currentAngle}°`, x + 16, y - 4);
+}
+
+// ============================
+// CONTROLS
+// ============================
+function startMeasurement() {
+  if (!cameraReady) return;
+  isRunning = true;
+  timeLeft = parseInt(document.getElementById('timeLimit').value);
+  document.getElementById('btnMeasure').disabled = true;
+  document.getElementById('btnStop').disabled = false;
+  setStatus('측정 중...', 'ready');
+
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    document.getElementById('btnStop').textContent = `■ 중지 (${timeLeft}초)`;
+    if (timeLeft <= 0) stopMeasurement();
+  }, 1000);
+}
+
+function stopMeasurement() {
+  isRunning = false;
+  clearInterval(timerInterval);
+  document.getElementById('btnMeasure').disabled = false;
+  document.getElementById('btnStop').disabled = true;
+  document.getElementById('btnStop').textContent = '■ 측정 중지';
+  setStatus('측정 완료', 'ready');
+  speak('측정 완료. ' + count + '회');
+  if(recActive) stopRecord();
+  saveHistory();
+  updateResBlock();
+}
+
+function resetCount() {
+  count = 0;
+  phase = 'up';
+  formErrors = [];
+  consecutiveFormFail = 0;
+  document.getElementById('countNum').textContent = '0';
+  document.getElementById('formErrorLog').innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;padding:16px">측정 시 오류 기록이 표시됩니다</div>';
+  updateResBlock();
+}
+
+function saveHistory() {
+  if (count === 0) return;
+  const name = document.getElementById('userName').value || '측정자';
+  const grade = getGrade();
+  const ex = EXERCISES[currentEx];
+  history.unshift({ name, ex: ex.name, count, grade, time: new Date().toLocaleTimeString('ko-KR') });
+  if (history.length > 10) history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  if (history.length === 0) return;
+  const labels = {S:'매우우수',A:'우수',B:'보통',C:'미흡',D:'매우미흡'};
+  const html = history.map(h => `
+    <div class="history-item">
+      <div>
+        <span class="history-ex">${h.name} · ${h.ex} · ${h.time}</span>
+      </div>
+      <div>
+        <span class="history-score">${h.count}회</span>
+        <span class="grade-badge gb-${h.grade}" style="margin-left:6px">${h.grade}</span>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('historyList').innerHTML = html;
+}
+
+function logFormError(msg) {
+  formErrors.unshift({ msg, time: new Date().toLocaleTimeString('ko-KR') });
+  if (formErrors.length > 10) formErrors.pop();
+  const html = formErrors.map(e => `
+    <div class="form-error-item">⚠ ${e.time} — ${e.msg}</div>
+  `).join('');
+  document.getElementById('formErrorLog').innerHTML = html;
+}
+
+function setStatus(msg, type) {
+  const el = document.getElementById('overlayStatus');
+  el.textContent = msg;
+  el.className = `overlay-status status-${type}`;
+  el.style.display = '';
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorBox');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+// Event listeners
+document.getElementById('gender').addEventListener('change', () => { renderNormTable(); updateResBlock(); });
+document.getElementById('ageGroup').addEventListener('change', () => { renderNormTable(); updateResBlock(); });
+
+// INIT
+renderPoseGuide();
+renderNormTable();
+updateResBlock();
+
+// ========== 음성 카운팅 ==========
+const synth = window.speechSynthesis;
+function speak(txt) {
+  if (!synth) return;
+  synth.cancel();
+  const u = new SpeechSynthesisUtterance(txt);
+  u.lang = 'ko-KR'; u.rate = 1.1; u.pitch = 1.0; u.volume = 1.0;
+  synth.speak(u);
+}
+
+// ========== 화면 녹화 ==========
+let mediaRec = null, recChunks = [], recActive = false;
+
+function toggleRecord() {
+  if (!cameraReady) { alert('먼저 카메라를 활성화하세요.'); return; }
+  recActive ? stopRecord() : startRecord();
+}
+
+function startRecord() {
+  const canvas = document.getElementById('canvas');
+  const cStream = canvas.captureStream(30);
+  navigator.mediaDevices.getUserMedia({audio:true})
+    .then(aStream => aStream.getAudioTracks().forEach(t => cStream.addTrack(t)))
+    .catch(() => {})
+    .finally(() => {
+      const opts = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? {mimeType:'video/webm;codecs=vp9'}
+        : MediaRecorder.isTypeSupported('video/webm')
+        ? {mimeType:'video/webm'} : {};
+      try { mediaRec = new MediaRecorder(cStream, opts); }
+      catch(e) { mediaRec = new MediaRecorder(cStream); }
+      recChunks = [];
+      mediaRec.ondataavailable = e => { if(e.data.size>0) recChunks.push(e.data); };
+      mediaRec.onstop = saveRecording;
+      mediaRec.start(100);
+      recActive = true;
+      document.getElementById('btnRec').textContent = '⏹ 녹화중지';
+      document.getElementById('btnRec').style.background = '#e05a4e';
+      document.getElementById('btnRec').style.color = '#fff';
+      document.getElementById('btnRecHdr').textContent = '⏹ 녹화중지';
+      document.getElementById('ovRec').style.display = 'block';
+    });
+}
+
+function stopRecord() {
+  if (mediaRec && mediaRec.state !== 'inactive') mediaRec.stop();
+  recActive = false;
+  document.getElementById('btnRec').textContent = '⏺ 녹화';
+  document.getElementById('btnRec').style.background = '#1a1a2e';
+  document.getElementById('btnRec').style.color = '#ffb3ae';
+  document.getElementById('btnRecHdr').textContent = '⏺ 화면 녹화';
+  document.getElementById('ovRec').style.display = 'none';
+}
+
+function saveRecording() {
+  const mime = recChunks[0]?.type || 'video/webm';
+  const blob = new Blob(recChunks, {type: mime});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const ext  = mime.includes('mp4') ? 'mp4' : 'webm';
+  const nm   = document.getElementById('userName').value || '측정자';
+  const date = new Date().toLocaleDateString('ko-KR').replace(/\. /g,'-').replace('.','');
+  a.href = url;
+  a.download = `체력측정_${nm}_${EXERCISES[currentEx].name}_${date}.${ext}`;
+  a.click();
+  URL.revokeObjectURL(url);
+  speak('녹화가 저장되었습니다');
+}
+
+// ========== 자세 기준 모달 ==========
+const POSE_CHECKS = {
+  squat: [
+    {icon:'📏', title:'깊이 (무릎 각도)',    ok:'무릎 100° 이하', fail:'100° 미달 시 DOWN 미인정'},
+    {icon:'🦵', title:'무릎 안쪽 모임(Valgus)', ok:'무릎이 발끝 방향 유지', fail:'무릎 X좌표가 발목 안쪽 진입 시 미인정 (정면촬영 시 감지)'},
+    {icon:'🔺', title:'상체 전경',           ok:'45° 이내 기울기', fail:'과도 전경 시 미인정'},
+    {icon:'⚖️', title:'좌우 비대칭',        ok:'양 무릎 각도 차 20° 이내', fail:'20° 초과 시 미인정'},
+  ],
+  pushup: [
+    {icon:'📏', title:'팔꿈치 깊이',         ok:'팔꿈치 90° 이하', fail:'90° 미달 시 DOWN 미인정'},
+    {icon:'📐', title:'몸통 정렬',           ok:'어깨-고관절-발목 일직선 (155° 이상)', fail:'엉덩이 처짐/들림 시 미인정'},
+    {icon:'⚖️', title:'좌우 비대칭',        ok:'양팔 각도 차 25° 이내', fail:'25° 초과 시 미인정'},
+  ],
+  pullup: [
+    {icon:'🔼', title:'완전 상승',           ok:'팔꿈치 60° 이하 (턱이 바 위로)', fail:'60° 초과 시 UP 미인정'},
+    {icon:'🔽', title:'완전 신전',           ok:'팔꿈치 160° 이상 (완전 하강)', fail:'160° 미달 시 DOWN 미인정'},
+    {icon:'🚫', title:'반동 사용',           ok:'몸통 안정 유지', fail:'어깨-고관절 과도 흔들림 시 미인정'},
+  ],
+  situp: [
+    {icon:'🔼', title:'완전 상승',           ok:'고관절 80° 이하 (상체 90° 이상)', fail:'80° 초과 시 UP 미인정'},
+    {icon:'🔽', title:'완전 하강',           ok:'어깨 바닥 완전 접촉', fail:'완전 하강 미달 시 DOWN 미인정'},
+    {icon:'🦵', title:'무릎 고정',           ok:'무릎 90° ± 20° 유지', fail:'±20° 초과 변동 시 미인정'},
+  ],
+  bench: [
+    {icon:'📏', title:'하강 깊이',           ok:'팔꿈치 90° 이하', fail:'90° 미달 시 DOWN 미인정'},
+    {icon:'🚫', title:'과도한 잠금',        ok:'팔꿈치 155~175° 이내', fail:'175° 초과 과신전 시 미인정'},
+    {icon:'⚖️', title:'좌우 비대칭',        ok:'양팔 각도 차 20° 이내', fail:'20° 초과 시 미인정'},
+  ],
+};
+
+function openGuideModal() {
+  const ex = EXERCISES[currentEx];
+  document.getElementById('modalTitle').textContent = ex.name + ' · 자세 인정 기준';
+  const checks = POSE_CHECKS[currentEx] || [];
+  const body = `
+    <div style="margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:#1e8a7a;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #2db8a4">📐 각도 기준 (${ex.joint})</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <div style="background:#e8f8f6;border-radius:8px;padding:8px 12px;font-size:12px"><strong>DOWN 인정</strong><br><span style="color:#1e8a7a">${ex.invertLogic?'각도 > '+ex.downAngle+'°':'각도 < '+ex.downAngle+'°'}</span></div>
+        <div style="background:#dcfce7;border-radius:8px;padding:8px 12px;font-size:12px"><strong>UP + 카운팅</strong><br><span style="color:#14532d">${ex.invertLogic?'각도 < '+ex.upAngle+'°':'각도 > '+ex.upAngle+'°'}</span></div>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:12px;font-weight:700;color:#1e8a7a;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #2db8a4">✅ 자세 체크 항목 (모두 통과 시만 카운팅)</div>
+      ${checks.map(c=>`
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #e2e8f0">
+          <span style="font-size:18px">${c.icon}</span>
+          <div>
+            <strong style="font-size:12px;color:#1a2744;display:block">${c.title}</strong>
+            <span style="font-size:11px;color:#22c55e">✓ 인정: ${c.ok}</span><br>
+            <span style="font-size:11px;color:#ef4444">✗ 미인정: ${c.fail}</span>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  document.getElementById('modalBody').innerHTML = body;
+  document.getElementById('guideModal').style.display = 'flex';
+}
+
+function closeGuideModal() {
+  document.getElementById('guideModal').style.display = 'none';
+}
+
+// ========== 음성 카운팅을 기존 onRep에 연결 ==========
+const _origCountRep = countRep;
+
+// onResults 내 카운팅 시 음성 추가 (패치)
+const _origCount = count;
+</script>
+</body>
+</html>
