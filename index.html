@@ -562,61 +562,66 @@ function onResults(res){
   if(!running) return;
 
   const lm=res.poseLandmarks, ex=EX[curEx];
-  let angle=0, fOk=true, fMsg='';
+  let angle=0;
 
+  // 각도만 계산 — 자세 체크 없음, 항상 카운팅 허용
   if(curEx==='squat'){
-    const La=calcAngle(lm[23],lm[25],lm[27]), Ra=calcAngle(lm[24],lm[26],lm[28]);
-    angle=(La+Ra)/2;
-    if(lm[25].x<lm[27].x-0.04||lm[26].x>lm[28].x+0.04){fOk=false;fMsg='무릎 안쪽 모임 (Valgus)';}
-    if(calcAngle(lm[11],lm[23],lm[25])<120){fOk=false;fMsg='상체 과도 전경';}
-    if(Math.abs(La-Ra)>20){fOk=false;fMsg='좌우 비대칭 ('+Math.round(Math.abs(La-Ra))+'°)';}
-    hlJoint(ctx,lm,canvas,25,fOk); hlJoint(ctx,lm,canvas,26,fOk);
+    // 왼쪽 무릎 (더 잘 보이는 쪽)
+    const La=calcAngle(lm[23],lm[25],lm[27]);
+    const Ra=calcAngle(lm[24],lm[26],lm[28]);
+    angle = (La+Ra)/2;
+    hlJoint(ctx,lm,canvas,25); hlJoint(ctx,lm,canvas,26);
   } else if(curEx==='pushup'){
-    const La=calcAngle(lm[11],lm[13],lm[15]), Ra=calcAngle(lm[12],lm[14],lm[16]);
-    angle=(La+Ra)/2;
-    if(calcAngle(lm[11],lm[23],lm[27])<155){fOk=false;fMsg='몸통 비정렬';}
-    if(Math.abs(La-Ra)>25){fOk=false;fMsg='팔 비대칭 ('+Math.round(Math.abs(La-Ra))+'°)';}
-    hlJoint(ctx,lm,canvas,13,fOk); hlJoint(ctx,lm,canvas,14,fOk);
+    const La=calcAngle(lm[11],lm[13],lm[15]);
+    const Ra=calcAngle(lm[12],lm[14],lm[16]);
+    angle = (La+Ra)/2;
+    hlJoint(ctx,lm,canvas,13); hlJoint(ctx,lm,canvas,14);
   } else if(curEx==='pullup'){
-    const La=calcAngle(lm[11],lm[13],lm[15]), Ra=calcAngle(lm[12],lm[14],lm[16]);
-    angle=(La+Ra)/2;
-    hlJoint(ctx,lm,canvas,13,fOk); hlJoint(ctx,lm,canvas,14,fOk);
+    const La=calcAngle(lm[11],lm[13],lm[15]);
+    const Ra=calcAngle(lm[12],lm[14],lm[16]);
+    angle = (La+Ra)/2;
+    hlJoint(ctx,lm,canvas,13); hlJoint(ctx,lm,canvas,14);
   } else if(curEx==='situp'){
     angle=calcAngle(lm[11],lm[23],lm[25]);
-    const knA=calcAngle(lm[23],lm[25],lm[27]);
-    if(Math.abs(knA-90)>25){fOk=false;fMsg='무릎 각도 불안정 ('+Math.round(knA)+'°)';}
-    hlJoint(ctx,lm,canvas,23,fOk);
+    hlJoint(ctx,lm,canvas,23);
   } else if(curEx==='bench'){
-    const La=calcAngle(lm[11],lm[13],lm[15]), Ra=calcAngle(lm[12],lm[14],lm[16]);
-    angle=(La+Ra)/2;
-    if(angle>175){fOk=false;fMsg='과도한 팔꿈치 잠금';}
-    if(Math.abs(La-Ra)>20){fOk=false;fMsg='팔 비대칭 ('+Math.round(Math.abs(La-Ra))+'°)';}
-    hlJoint(ctx,lm,canvas,13,fOk); hlJoint(ctx,lm,canvas,14,fOk);
+    const La=calcAngle(lm[11],lm[13],lm[15]);
+    const Ra=calcAngle(lm[12],lm[14],lm[16]);
+    angle = (La+Ra)/2;
+    hlJoint(ctx,lm,canvas,13); hlJoint(ctx,lm,canvas,14);
   }
 
   curAngle=Math.round(angle);
   document.getElementById('angVal').textContent=curAngle+'°';
-  const dot=document.getElementById('fdot'), ftxt=document.getElementById('ftxt');
-  if(fOk){dot.className='fdot ok';ftxt.textContent='자세 양호';}
-  else{dot.className='fdot';ftxt.textContent='자세 오류';failStreak++;if(failStreak>8){logFerr(fMsg);failStreak=0;}}
-  formOk=fOk;
-  countRep(angle,ex,fOk,fMsg);
+
+  // 자세 표시 — 항상 양호로 표시
+  document.getElementById('fdot').className='fdot ok';
+  document.getElementById('ftxt').textContent='인식 중';
+
+  // 카운팅 — fOk 항상 true
+  countRep(angle, ex);
 }
 
-function countRep(angle,ex,fOk,fMsg){
+function countRep(angle,ex){
   if(!ex.inv){
-    if(phase==='up'&&angle<ex.downA){phase='down';setStatus('⬇ DOWN — 올라오세요','down');}
-    else if(phase==='down'&&angle>ex.upA){
-      if(fOk){cnt++;onRep();setStatus('⬆ UP — '+cnt+'회!','up');}
-      else{setStatus('❌ 자세 오류 — 미인정','ferr');logFerr(fMsg||'자세 미달');}
+    // 정방향: 스쿼트, 팔굽혀펴기, 벤치
+    if(phase==='up' && angle<ex.downA){
+      phase='down';
+      setStatus('⬇ 내려가는 중...','down');
+    } else if(phase==='down' && angle>ex.upA){
       phase='up';
+      cnt++; onRep();
+      setStatus('⬆ '+cnt+'회 완료!','up');
     }
   } else {
-    if(phase==='up'&&angle>ex.downA){phase='down';setStatus('⬇ DOWN — 올라오세요','down');}
-    else if(phase==='down'&&angle<ex.upA){
-      if(fOk){cnt++;onRep();setStatus('⬆ UP — '+cnt+'회!','up');}
-      else{setStatus('❌ 자세 오류 — 미인정','ferr');logFerr(fMsg||'자세 미달');}
+    // 역방향: 턱걸이, 윗몸일으키기
+    if(phase==='up' && angle>ex.downA){
+      phase='down';
+      setStatus('⬇ 내려가는 중...','down');
+    } else if(phase==='down' && angle<ex.upA){
       phase='up';
+      cnt++; onRep();
+      setStatus('⬆ '+cnt+'회 완료!','up');
     }
   }
 }
@@ -632,11 +637,11 @@ function calcAngle(A,B,C){
   if(a>180) a=360-a; return a;
 }
 
-function hlJoint(ctx,lm,canvas,idx,ok){
+function hlJoint(ctx,lm,canvas,idx){
   const p=lm[idx], x=p.x*canvas.width, y=p.y*canvas.height;
   ctx.beginPath(); ctx.arc(x,y,12,0,2*Math.PI);
-  ctx.strokeStyle=ok?'#22c55e':'#ef4444'; ctx.lineWidth=3; ctx.stroke();
-  ctx.fillStyle=ok?'rgba(34,197,94,.18)':'rgba(239,68,68,.18)'; ctx.fill();
+  ctx.strokeStyle='#22c55e'; ctx.lineWidth=3; ctx.stroke();
+  ctx.fillStyle='rgba(34,197,94,.18)'; ctx.fill();
   ctx.font='bold 12px sans-serif'; ctx.fillStyle='#fff';
   ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=2;
   ctx.strokeText(curAngle+'°',x+14,y-2); ctx.fillText(curAngle+'°',x+14,y-2);
