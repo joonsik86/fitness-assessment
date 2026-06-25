@@ -419,8 +419,11 @@ function setSheetsStatus(msg,type){
 async function activateCamera(){
   const btn=document.getElementById('btnCam');
   btn.disabled=true; btn.textContent='로딩중...';
+  facingMode='environment'; // 처음부터 후면으로 시작
   await startCameraWithFacing(facingMode);
 }
+
+let rafId=null; // requestAnimationFrame ID
 
 async function startCameraWithFacing(facing){
   const video=document.getElementById('video'), canvas=document.getElementById('canvas');
@@ -428,58 +431,61 @@ async function startCameraWithFacing(facing){
   const switchBtn=document.getElementById('camSwitch');
 
   try{
-    // 기존 스트림 완전 정지
+    // 1. 기존 루프 중단
+    if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+
+    // 2. 기존 MediaPipe Camera 완전 정지
     if(mpCam){ try{ mpCam.stop(); }catch(e){} mpCam=null; }
-    if(curStream){ curStream.getTracks().forEach(t=>{ t.stop(); }); curStream=null; }
+
+    // 3. 기존 스트림 정지
+    if(curStream){ curStream.getTracks().forEach(t=>t.stop()); curStream=null; }
     video.srcObject=null;
+    await new Promise(r=>setTimeout(r,400));
 
-    // 잠시 대기 (스트림 해제 시간)
-    await new Promise(r=>setTimeout(r,300));
-
-    // 카메라 제약 - 스마트폰 호환 방식
-    let constraints;
-    if(facing==='environment'){
-      // 후면: exact 키워드 없이 ideal로 시도
-      constraints = { video:{ facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720} } };
-    } else {
-      constraints = { video:{ facingMode:{ideal:'user'}, width:{ideal:640}, height:{ideal:480} } };
-    }
-
+    // 4. 새 스트림 요청 - exact 사용 (스마트폰 표준)
     let stream;
     try{
-      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{ facingMode:{ exact: facing } }
+      });
     } catch(e1){
-      // 실패 시 facingMode 없이 재시도
-      console.warn('facingMode 실패, 기본 카메라로 재시도:', e1);
-      stream = await navigator.mediaDevices.getUserMedia({ video:true });
+      // exact 실패 시 ideal로 재시도
+      try{
+        stream = await navigator.mediaDevices.getUserMedia({
+          video:{ facingMode: facing }
+        });
+      } catch(e2){
+        // 그래도 실패하면 제약 없이
+        stream = await navigator.mediaDevices.getUserMedia({ video:true });
+      }
     }
 
     curStream=stream;
     video.srcObject=stream;
+    await new Promise(r=>{ video.onloadedmetadata=r; });
+    await video.play();
 
-    // 미러: 셀카만 반전, 후면은 정상
+    // 5. 미러 설정 (셀카만 좌우반전)
     const mirror = facing==='user' ? 'scaleX(-1)' : 'scaleX(1)';
     video.style.transform=mirror;
     canvas.style.transform=mirror;
 
-    video.style.display='block';
-    canvas.style.display='block';
+    // 6. 실제 카메라 방향 확인 후 버튼 업데이트
+    const track=stream.getVideoTracks()[0];
+    const actualFacing=(track.getSettings().facingMode)||facing;
+    facingMode=actualFacing;
+    switchBtn.textContent = actualFacing==='user' ? '🔄 후면으로' : '🔄 셀카로';
+
+    // 7. UI 표시
+    video.style.display='block'; canvas.style.display='block';
     document.getElementById('noCam').style.display='none';
     document.getElementById('ovCnt').style.display='flex';
     document.getElementById('ovAng').style.display='block';
     document.getElementById('ovForm').style.display='block';
     switchBtn.style.display='block';
-
-    // 실제 사용 중인 카메라 방향 확인
-    const track = stream.getVideoTracks()[0];
-    const settings = track.getSettings();
-    const actualFacing = settings.facingMode || facing;
-    facingMode = actualFacing;
-    switchBtn.textContent = actualFacing==='user' ? '🔄 후면' : '🔄 셀카';
-
     setStatus('카메라 준비 — 측정 시작을 누르세요','ready');
 
-    // Pose 모델 초기화 (최초 1회)
+    // 8. Pose 모델 초기화 (최초 1회만)
     if(!poseModel){
       poseModel=new Pose({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`});
       poseModel.setOptions({
@@ -490,12 +496,15 @@ async function startCameraWithFacing(facing){
       poseModel.onResults(onResults);
     }
 
-    // Camera 재시작
-    mpCam=new Camera(video,{
-      onFrame:async()=>{ if(poseModel) await poseModel.send({image:video}); },
-      width:640, height:480
-    });
-    await mpCam.start();
+    // 9. MediaPipe Camera 유틸 대신 수동 루프 사용
+    //    → 이렇게 해야 facingMode가 덮어씌워지지 않음
+    async function poseLoop(){
+      if(video.readyState>=2 && !video.paused){
+        await poseModel.send({image:video});
+      }
+      rafId=requestAnimationFrame(poseLoop);
+    }
+    poseLoop();
 
     camReady=true;
     btn.disabled=false;
@@ -505,13 +514,15 @@ async function startCameraWithFacing(facing){
     btn.disabled=false;
     btn.textContent='📷 카메라';
     camReady=false;
-    alert('카메라 오류: '+e.message+'\n\n후면 카메라가 없는 기기이거나 권한이 거부되었습니다.');
+    console.error(e);
+    alert('카메라 오류: '+e.message);
   }
 }
 
 async function switchCamera(){
-  facingMode = facingMode==='user' ? 'environment' : 'user';
-  await startCameraWithFacing(facingMode);
+  const next = facingMode==='user' ? 'environment' : 'user';
+  document.getElementById('camSwitch').textContent='전환중...';
+  await startCameraWithFacing(next);
 }
 
 // ═══════════════════════════════════════════
