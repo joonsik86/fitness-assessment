@@ -81,8 +81,8 @@ header{background:var(--navy);color:#fff;padding:11px 16px;display:flex;align-it
 .ov-timer{position:absolute;bottom:12px;right:12px;background:rgba(10,22,40,.75);color:#fff;padding:4px 9px;border-radius:7px;font-size:12px;font-weight:700;display:none}
 
 /* CAM SWITCH */
-.cam-switch{position:absolute;bottom:12px;left:12px;background:rgba(10,22,40,.75);color:#fff;border:none;padding:6px 10px;border-radius:7px;font-size:14px;cursor:pointer;display:none;backdrop-filter:blur(4px)}
-.cam-switch:hover{background:rgba(30,138,122,.8)}
+.cam-switch{position:absolute;bottom:12px;left:12px;background:rgba(10,22,40,.85);color:#fff;border:none;padding:7px 12px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;display:none;backdrop-filter:blur(6px);font-family:inherit}
+.cam-switch:hover{background:rgba(30,138,122,.9)}
 
 /* VCTRL */
 .vctrl{padding:10px 12px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--border)}
@@ -255,7 +255,7 @@ header{background:var(--navy);color:#fff;padding:11px 16px;display:flex;align-it
         <div class="ov-st s-wait" id="ovSt" style="display:none">카메라 대기</div>
         <div class="ov-rec" id="ovRec">● REC</div>
         <div class="ov-timer" id="ovTimer">60초</div>
-        <button class="cam-switch" id="camSwitch" onclick="switchCamera()" title="카메라 전환">🔄</button>
+        <button class="cam-switch" id="camSwitch" onclick="switchCamera()" title="카메라 전환">🔄 후면</button>
       </div>
       <div class="vctrl">
         <button class="bc bc-start" id="btnStart" onclick="startMeasure()" disabled>▶ 시작</button>
@@ -424,46 +424,93 @@ async function activateCamera(){
 
 async function startCameraWithFacing(facing){
   const video=document.getElementById('video'), canvas=document.getElementById('canvas');
+  const btn=document.getElementById('btnCam');
+  const switchBtn=document.getElementById('camSwitch');
+
   try{
-    if(curStream){ curStream.getTracks().forEach(t=>t.stop()); }
-    const stream=await navigator.mediaDevices.getUserMedia({
-      video:{width:640,height:480,facingMode:facing}
-    });
+    // 기존 스트림 완전 정지
+    if(mpCam){ try{ mpCam.stop(); }catch(e){} mpCam=null; }
+    if(curStream){ curStream.getTracks().forEach(t=>{ t.stop(); }); curStream=null; }
+    video.srcObject=null;
+
+    // 잠시 대기 (스트림 해제 시간)
+    await new Promise(r=>setTimeout(r,300));
+
+    // 카메라 제약 - 스마트폰 호환 방식
+    let constraints;
+    if(facing==='environment'){
+      // 후면: exact 키워드 없이 ideal로 시도
+      constraints = { video:{ facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720} } };
+    } else {
+      constraints = { video:{ facingMode:{ideal:'user'}, width:{ideal:640}, height:{ideal:480} } };
+    }
+
+    let stream;
+    try{
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch(e1){
+      // 실패 시 facingMode 없이 재시도
+      console.warn('facingMode 실패, 기본 카메라로 재시도:', e1);
+      stream = await navigator.mediaDevices.getUserMedia({ video:true });
+    }
+
     curStream=stream;
     video.srcObject=stream;
-    video.style.display='block'; canvas.style.display='block';
+
+    // 미러: 셀카만 반전, 후면은 정상
+    const mirror = facing==='user' ? 'scaleX(-1)' : 'scaleX(1)';
+    video.style.transform=mirror;
+    canvas.style.transform=mirror;
+
+    video.style.display='block';
+    canvas.style.display='block';
     document.getElementById('noCam').style.display='none';
     document.getElementById('ovCnt').style.display='flex';
     document.getElementById('ovAng').style.display='block';
     document.getElementById('ovForm').style.display='block';
-    document.getElementById('camSwitch').style.display='block';
+    switchBtn.style.display='block';
+
+    // 실제 사용 중인 카메라 방향 확인
+    const track = stream.getVideoTracks()[0];
+    const settings = track.getSettings();
+    const actualFacing = settings.facingMode || facing;
+    facingMode = actualFacing;
+    switchBtn.textContent = actualFacing==='user' ? '🔄 후면' : '🔄 셀카';
+
     setStatus('카메라 준비 — 측정 시작을 누르세요','ready');
 
+    // Pose 모델 초기화 (최초 1회)
     if(!poseModel){
       poseModel=new Pose({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`});
-      poseModel.setOptions({modelComplexity:1,smoothLandmarks:true,enableSegmentation:false,minDetectionConfidence:0.6,minTrackingConfidence:0.6});
+      poseModel.setOptions({
+        modelComplexity:1, smoothLandmarks:true,
+        enableSegmentation:false,
+        minDetectionConfidence:0.6, minTrackingConfidence:0.6
+      });
       poseModel.onResults(onResults);
     }
-    if(mpCam){ mpCam.stop(); }
-    mpCam=new Camera(video,{onFrame:async()=>{ await poseModel.send({image:video}); },width:640,height:480});
+
+    // Camera 재시작
+    mpCam=new Camera(video,{
+      onFrame:async()=>{ if(poseModel) await poseModel.send({image:video}); },
+      width:640, height:480
+    });
     await mpCam.start();
 
     camReady=true;
-    document.getElementById('btnStart').disabled=false;
-    document.getElementById('btnCam').textContent='✅ 카메라 활성';
+    btn.disabled=false;
+    btn.textContent='✅ 카메라 활성';
+
   }catch(e){
-    document.getElementById('btnCam').disabled=false;
-    document.getElementById('btnCam').textContent='📷 카메라';
-    alert('카메라 오류: '+e.message);
+    btn.disabled=false;
+    btn.textContent='📷 카메라';
+    camReady=false;
+    alert('카메라 오류: '+e.message+'\n\n후면 카메라가 없는 기기이거나 권한이 거부되었습니다.');
   }
 }
 
 async function switchCamera(){
   facingMode = facingMode==='user' ? 'environment' : 'user';
-  // canvas mirror: 셀카면 반전, 후면이면 정상
-  const mirror = facingMode==='user' ? 'scaleX(-1)' : 'scaleX(1)';
-  document.getElementById('video').style.transform=mirror;
-  document.getElementById('canvas').style.transform=mirror;
   await startCameraWithFacing(facingMode);
 }
 
