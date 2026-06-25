@@ -304,7 +304,7 @@ header{background:var(--navy);color:#fff;padding:11px 16px;display:flex;align-it
       </div>
 
       <!-- SHEETS SETUP -->
-      <div class="rcard" id="sheetsSetupCard">
+      <div class="rcard" id="sheetsSetupCard" style="display:none">
         <h3>🔗 Google Sheets 연동</h3>
         <div style="font-size:10px;color:var(--muted);margin-bottom:8px">교수님이 Apps Script URL을 설정하면 측정 결과가 자동 전송됩니다</div>
         <div style="display:flex;gap:6px">
@@ -390,7 +390,7 @@ function saveScriptUrl(){
   localStorage.setItem('sheetsUrl', url);
   document.getElementById('urlStatus').textContent='✅ 저장 완료';
 }
-function getScriptUrl(){ return localStorage.getItem('sheetsUrl')||''; }
+function getScriptUrl(){ return 'https://script.google.com/macros/s/AKfycbwYXWm0-CW167QE6T0CEdwpmULafs9pv4bJHcNrI6Krjy73WAjuR2_8bHE8lkCew80APQ/exec'; }
 
 async function sendToSheets(record){
   const url=getScriptUrl();
