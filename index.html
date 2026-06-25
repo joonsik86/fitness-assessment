@@ -258,7 +258,7 @@ header{background:var(--navy);color:#fff;padding:11px 16px;display:flex;align-it
         <button class="cam-switch" id="camSwitch" onclick="switchCamera()" title="카메라 전환">🔄 후면</button>
       </div>
       <div class="vctrl">
-        <button class="bc bc-start" id="btnStart" onclick="startMeasure()" disabled>▶ 시작</button>
+        <button class="bc bc-start" id="btnStart" onclick="startMeasure()">▶ 시작</button>
         <button class="bc bc-stop"  id="btnStop"  onclick="stopMeasure()"  disabled>■ 중지</button>
         <button class="bc bc-reset" onclick="resetAll()">↺ 초기화</button>
         <button class="bc bc-rec"   id="btnRec"   onclick="toggleRecord()">⏺ 녹화</button>
@@ -524,7 +524,6 @@ async function startCameraWithFacing(facing){
     }
 
     camReady=true;
-    btn.disabled=false;
     btn.textContent='✅ 카메라 활성';
 
   }catch(e){
@@ -651,7 +650,6 @@ function hlJoint(ctx,lm,canvas,idx){
 // 측정 컨트롤
 // ═══════════════════════════════════════════
 function startMeasure(){
-  if(!camReady) return;
   running=true;
   timeLeft=parseInt(document.getElementById('timeLimit').value);
   document.getElementById('ovTimer').textContent=timeLeft+'초';
